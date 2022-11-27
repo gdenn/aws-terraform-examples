@@ -37,7 +37,6 @@ variable "subnet_reserved_cidrs" {
 variable "profile" {
   type    = string
   description = "aws profile"
-  default = "heise"
 }
 
 variable "region" {
