@@ -14,10 +14,6 @@ output "data_subnets" {
   value = ["${aws_subnet.subnet_data.*.id}"]
 }
 
-output "reserved_subnets" {
-  value = ["${aws_subnet.subnet_reserved.*.id}"]
-}
-
 output "computing_subnets" {
   value = ["${aws_subnet.subnet_computing.*.id}"]
 }

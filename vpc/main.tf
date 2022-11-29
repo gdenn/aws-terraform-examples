@@ -65,3 +65,12 @@ resource "aws_route_table" "public_subnet" {
     gateway_id = aws_internet_gateway.main_igw.id
   }
 }
+
+resource "aws_route_table" "private_isolated_subnet" {
+  vpc_id = aws_vpc.main.id
+  
+  tags = {
+    Name        = "${var.vpc_name}-private-isolated-subnet-route-table"
+    Environment = var.environment
+  }
+}

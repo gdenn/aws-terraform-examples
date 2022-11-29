@@ -10,28 +10,9 @@ variable "cidr" {
   default     = "10.0.0.0/16"
 }
 
-variable "subnet_web_cidrs" {
-  type = list(string)
-  description = "public subnet cidrs"
-  default = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
-}
-
-variable "subnet_computing_cidrs" {
-  type = list(string)
-  description = "private computing subnet cidrs"
-  default = ["10.0.4.0/24", "10.0.5.0/24", "10.0.6.0/24"]
-}
-
-variable "subnet_data_cidrs" {
-  type = list(string)
-  description = "private data subnet cidrs"
-  default = ["10.0.7.0/24", "10.0.8.0/24", "10.0.9.0/24"]
-}
-
-variable "subnet_reserved_cidrs" {
-  type = list(string)
-  description = "private reserved subnet cidrs"
-  default = ["10.0.10.0/24", "10.0.11.0/24", "10.0.12.0/24"]
+variable "cidr_offset" {
+  description = "offset that we pass to the cidrsubnet function to build subnets"
+  default = 8
 }
 
 variable "profile" {
