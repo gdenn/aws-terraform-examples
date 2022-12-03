@@ -3,6 +3,7 @@
 #####################################################
 # CONSTANTS
 #####################################################
+
 cw_agent_config_folder=/opt/aws/amazon-cloudwatch-agent/etc/
 cw_agent_config_path=/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
 cw_agent_ctl=/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl
@@ -51,13 +52,13 @@ sudo cat <<EOT >> $cw_agent_config_path
         "collect_list": [
           {
             "file_path": "$http_error_logs",
-            "log_group_name": "web-server-logs",
+            "log_group_name": "$log_group",
             "log_stream_name": "{instance_id}-error-logs",
             "retention_in_days": $cw_agent_log_retention
           },
           {
             "file_path": "$http_access_logs",
-            "log_group_name": "web-server-logs",
+            "log_group_name": "$log_group",
             "log_stream_name": "{instance_id}-access-logs",
             "retention_in_days": $cw_agent_log_retention
           }

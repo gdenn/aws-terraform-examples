@@ -1,8 +1,10 @@
 locals {
-  availability_zone = "eu-central-1a"
-  instance_type     = "t3.micro"
-  environment       = "sdlc"
-  region            = "eu-central-1"
+  availability_zone  = "eu-central-1a"
+  availability_zone2 = "eu-central-1b"
+  instance_type      = "t3.micro"
+  environment        = "sdlc"
+  region             = "eu-central-1"
+  log_group          = "web-server"
 }
 
 module "vpc" {
@@ -10,8 +12,9 @@ module "vpc" {
   profile            = var.profile
   environment        = local.environment
   region             = local.region
-  availability_zones = [local.availability_zone]
+  availability_zones = [local.availability_zone, local.availability_zone2]
   vpc_name           = "ec2-webserver-vpc"
+  log_group_name     = local.log_group
 }
 
 #####################################################
@@ -21,7 +24,7 @@ module "vpc" {
 resource "aws_instance" "web_server" {
   ami           = data.aws_ami.amzn2.id
   instance_type = local.instance_type
-  user_data     = templatefile("user-data.sh", {})
+  user_data     = templatefile("user-data.tftpl", { log_group = local.log_group })
   subnet_id     = element(module.vpc.web_subnet, 0)
 
   iam_instance_profile = aws_iam_instance_profile.instance_profile.name
@@ -76,6 +79,7 @@ resource "aws_iam_policy" "cw_agent_policy" {
   name        = "cw-agent-policy"
   path        = "/"
   description = "policy to alow ec2 instance to push metrics and logs to CloudWatch"
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -163,8 +167,19 @@ resource "aws_security_group" "alb_security_group" {
   egress = [
     {
       description      = "allow http traffic to web server ec2 instance"
-      from_port        = 443
+      from_port        = 80
       to_port          = 80
+      protocol         = "tcp"
+      cidr_blocks      = ["0.0.0.0/0"]
+      ipv6_cidr_blocks = ["::/0"]
+      prefix_list_ids  = []
+      security_groups  = []
+      self             = false
+    },
+    {
+      description      = "allow https traffic to web server ec2 instance"
+      from_port        = 443
+      to_port          = 443
       protocol         = "tcp"
       cidr_blocks      = ["0.0.0.0/0"]
       ipv6_cidr_blocks = ["::/0"]

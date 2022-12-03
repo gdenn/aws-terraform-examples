@@ -1,6 +1,5 @@
 locals {
   subnet_count = length(var.availability_zones)
-  nat_gw_count = var.environment == "production" ? local.subnet_count : 1
 }
 
 resource "aws_vpc" "main" {
@@ -14,6 +13,60 @@ resource "aws_vpc" "main" {
     Environment = var.environment
   }
 }
+
+################################################################################
+# FLOW LOGS
+################################################################################
+
+resource "aws_flow_log" "vpc_flow_logs" {
+  iam_role_arn = aws_iam_role.flow_logs_role.arn
+  log_destination = aws_cloudwatch_log_group.vpc_log_group.arn
+  traffic_type = "ALL"
+  vpc_id = aws_vpc.main.id
+  
+}
+resource "aws_cloudwatch_log_group" "vpc_log_group" {
+  name = var.log_group_name
+}
+
+resource "aws_iam_role" "flow_logs_role" {
+  name = "flow-logs-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = {
+      Effect = "Allow"
+      Principal = {
+        Service = "vpc-flow-logs.amazonaws.com"
+      }
+      Action = "sts:AssumeRole"
+    }
+  })
+}
+
+resource "aws_iam_role_policy" "create_log_group_policy" {
+  name = "allow-log-group-policy"
+  role = aws_iam_role.flow_logs_role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams"
+        ],
+        Effect = "Allow",
+        Resource = [
+          "*"
+        ]
+      }
+    ]
+  })
+}
+
 
 ################################################################################
 # INGWG / NATGW
@@ -30,11 +83,11 @@ resource "aws_internet_gateway" "main_igw" {
 resource "aws_eip" "nat_eip" {
   vpc = true
   depends_on = [aws_internet_gateway.main_igw]
-  count = local.nat_gw_count
+  count = local.subnet_count
 }
 
 resource "aws_nat_gateway" "natgw" {
-  count = local.nat_gw_count
+  count = local.subnet_count
   allocation_id = aws_eip.nat_eip[count.index].id
   subnet_id = aws_subnet.subnet_web[count.index].id
   depends_on = [aws_internet_gateway.main_igw]
@@ -50,17 +103,18 @@ resource "aws_nat_gateway" "natgw" {
 ################################################################################
 
 resource "aws_route_table" "private_subnet" {
+  count = local.subnet_count
   vpc_id = aws_vpc.main.id
   
   tags = {
-    Name        = "${var.vpc_name}-private-subnet-route-table"
+    Name        = "${var.vpc_name}-private-subnet-route-table-${count.index}"
     Environment = var.environment
   }
 }
 
 resource "aws_route" "private_subnet" {
   count = local.subnet_count
-  route_table_id = aws_route_table.private_subnet.id
+  route_table_id = aws_route_table.private_subnet[count.index].id
   destination_cidr_block = "0.0.0.0/0"
   nat_gateway_id = aws_nat_gateway.natgw[count.index].id
 }
@@ -134,7 +188,7 @@ resource "aws_subnet" "subnet_computing" {
 resource "aws_route_table_association" "subnet_computing_route_table_association" {
   count          = local.azs_count
   subnet_id      = aws_subnet.subnet_computing[count.index].id
-  route_table_id = aws_route_table.private_subnet.id
+  route_table_id = aws_route_table.private_subnet[count.index].id
 }
 
 ################################################################################

@@ -20,6 +20,11 @@ variable "profile" {
   description = "aws profile"
 }
 
+variable "log_group_name" {
+  type    = string
+  description = "vpc-flow-logs"
+}
+
 variable "region" {
   type    = string
   default = "eu-central-1"
