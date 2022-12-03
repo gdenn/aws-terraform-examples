@@ -22,7 +22,8 @@ resource "aws_instance" "web_server" {
 
   iam_instance_profile = aws_iam_instance_profile.instance_profile.name
   depends_on = [
-    aws_iam_role_policy_attachment.smm_policy_attachment
+    aws_iam_role_policy_attachment.smm_policy_attachment,
+    aws_iam_role_policy_attachment.cw_agent_policy_attachment
   ]
 
   root_block_device {
@@ -48,24 +49,51 @@ resource "aws_iam_role" "instance_profile" {
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
-    Statement: [
+    Statement = [
       {
-        Action: "sts:AssumeRole",
-        Principal: {
-          Service: "ec2.amazonaws.com"
+        Action = "sts:AssumeRole",
+        Principal = {
+          Service = "ec2.amazonaws.com"
         },
-        Effect: "Allow",
-        Sid: ""
+        Effect = "Allow",
+        Sid = ""
+      },
+    ]
+  })
+}
+
+resource "aws_iam_policy" "cw_agent_policy" {
+  name = "cw-agent-policy"
+  path = "/"
+  description = "policy to alow ec2 instance to push metrics and logs to CloudWatch"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams"
+        ],
+        Effect = "Allow",
+        Resource = [
+          "*"
+        ]
       }
     ]
   })
+}
+
+resource "aws_iam_role_policy_attachment" "cw_agent_policy_attachment" {
+  role = aws_iam_role.instance_profile.name
+  policy_arn = aws_iam_policy.cw_agent_policy.arn
 }
 
 resource "aws_iam_role_policy_attachment" "smm_policy_attachment" {
   role = aws_iam_role.instance_profile.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
-
 
 data "aws_ami" "amzn2" {
   most_recent = true
