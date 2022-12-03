@@ -14,6 +14,10 @@ module "vpc" {
   vpc_name = "ec2-webserver-vpc"
 }
 
+#####################################################
+# EC2 WEB SERVER
+#####################################################
+
 resource "aws_instance" "web_server" {
   ami               = data.aws_ami.amzn2.id
   instance_type     = local.instance_type
@@ -37,6 +41,10 @@ resource "aws_instance" "web_server" {
     Name        = "ec2-web-server"
   }
 }
+
+#####################################################
+# EC2 INSTANCE PROFILE
+#####################################################
 
 resource "aws_iam_instance_profile" "instance_profile" {
   name = "web-server-instance-profile"
@@ -105,3 +113,7 @@ data "aws_ami" "amzn2" {
 
   owners = ["amazon"]
 }
+
+#####################################################
+# ALB
+#####################################################

@@ -1,4 +1,8 @@
 #!/bin/bash
+
+#####################################################
+# CONSTANTS
+#####################################################
 cw_agent_config_folder=/opt/aws/amazon-cloudwatch-agent/etc/
 cw_agent_config_path=/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
 cw_agent_ctl=/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl
@@ -15,7 +19,9 @@ http_error_logs=/var/log/httpd/error_log
 export USER=$(whoami)
 cd $HOME
 
-#################### AWS SESSION MANAGER AGENT ####################
+#####################################################
+# AWS SESSION MANAGER AGENT
+#####################################################
 sudo mkdir /tmp/ssm
 cd /tmp/ssm
 wget $ssm_agent_deb_download_url
@@ -24,7 +30,9 @@ sudo dpkg -i amazon-ssm-agent.deb
 sudo systemctl enable amazon-ssm-agent
 rm amazon-ssm-agent.deb
 
-#################### CLOUD WATCH AGENT ####################
+#####################################################
+# CLOUD WATCH AGENT
+#####################################################
 sudo yum update -y
 wget $cw_agent_rpm_download_url
 sudo rpm -U ./amazon-cloudwatch-agent.rpm
@@ -90,7 +98,9 @@ sudo cat <<EOT >> $cw_agent_config_path
 EOT
 sudo $cw_agent_ctl -a fetch-config -m ec2 -c file:$cw_agent_config_path -s
 
-#################### APACHE2 WEB SERVER ####################
+#####################################################
+# HTTPD WEB SERVER
+#####################################################
 sudo amazon-linux-extras install php8.0 mariadb10.5 -y
 sudo yum install -y httpd
 
