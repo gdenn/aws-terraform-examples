@@ -20,6 +20,11 @@ resource "aws_instance" "web_server" {
   user_data = templatefile("user-data.sh", {})
   subnet_id = element(module.vpc.web_subnet, 0)
 
+  iam_instance_profile = aws_iam_instance_profile.instance_profile.name
+  depends_on = [
+    aws_iam_role_policy_attachment.smm_policy_attachment
+  ]
+
   root_block_device {
     delete_on_termination = true
     volume_type = "gp3"
@@ -30,6 +35,35 @@ resource "aws_instance" "web_server" {
     Environment = local.environment
     Name        = "ec2-web-server"
   }
+}
+
+resource "aws_iam_instance_profile" "instance_profile" {
+  name = "web-server-instance-profile"
+  role = aws_iam_role.instance_profile.name
+}
+
+resource "aws_iam_role" "instance_profile" {
+  name = "web-server-instance-profile"
+  path = "/"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement: [
+      {
+        Action: "sts:AssumeRole",
+        Principal: {
+          Service: "ec2.amazonaws.com"
+        },
+        Effect: "Allow",
+        Sid: ""
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "smm_policy_attachment" {
+  role = aws_iam_role.instance_profile.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
 
