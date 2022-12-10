@@ -4,7 +4,6 @@ locals {
   instance_type      = "t3.micro"
   environment        = "sdlc"
   region             = "eu-central-1"
-  log_group          = "web-server"
 }
 
 module "vpc" {
@@ -14,7 +13,7 @@ module "vpc" {
   region             = local.region
   availability_zones = [local.availability_zone, local.availability_zone2]
   vpc_name           = "ec2-webserver-vpc"
-  log_group_name     = local.log_group
+  log_group_name     = "web-server-vpc-flow-logs"
 }
 
 #####################################################
@@ -24,7 +23,7 @@ module "vpc" {
 resource "aws_instance" "web_server" {
   ami           = data.aws_ami.amzn2.id
   instance_type = local.instance_type
-  user_data     = templatefile("user-data.tftpl", { log_group = local.log_group })
+  user_data     = templatefile("user-data.sh", {})
   subnet_id     = element(module.vpc.web_subnet, 0)
 
   iam_instance_profile = aws_iam_instance_profile.instance_profile.name
@@ -135,8 +134,8 @@ resource "aws_security_group" "web_server_sg" {
       to_port          = 80
       protocol         = "tcp"
       security_groups  = [aws_security_group.alb_security_group.id]
-      cidr_blocks      = ["0.0.0.0/0"]
-      ipv6_cidr_blocks = ["::/0"]
+      cidr_blocks      = []
+      ipv6_cidr_blocks = []
       prefix_list_ids  = []
       self             = false
     }
@@ -154,8 +153,8 @@ resource "aws_security_group" "alb_security_group" {
   ingress = [
     {
       description      = "allow https traffic from the internet"
-      from_port        = 443
-      to_port          = 443
+      from_port        = 80
+      to_port          = 80
       protocol         = "tcp"
       cidr_blocks      = ["0.0.0.0/0"]
       ipv6_cidr_blocks = ["::/0"]
@@ -199,12 +198,20 @@ resource "aws_lb_target_group" "web_server_target_group" {
   target_type = "instance"
   protocol    = "HTTP"
   vpc_id      = module.vpc.vpc_id
+
+  health_check {
+    healthy_threshold = 3
+    unhealthy_threshold = 3
+    interval = 20
+    timeout = 5
+  }
 }
 
 resource "aws_alb_target_group_attachment" "web_server_target_group_attachement" {
   count            = length(aws_instance.web_server)
   target_group_arn = aws_lb_target_group.web_server_target_group.arn
   target_id        = element(aws_instance.web_server.*.id, count.index)
+  port             = 80
 }
 
 #####################################################
@@ -227,31 +234,7 @@ resource "aws_lb_listener" "alb_listener" {
   protocol          = "HTTP"
 
   default_action {
-    type = "redirect"
-
-    redirect {
-      port        = "443"
-      protocol    = "HTTPS"
-      status_code = "HTTP_301"
-    }
-  }
-}
-
-#####################################################
-# ALB LISTENER RULES
-#####################################################
-resource "aws_alb_listener_rule" "static_rule" {
-  listener_arn = aws_lb_listener.alb_listener.arn
-  priority     = 100
-
-  action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.web_server_target_group.arn
-  }
-
-  condition {
-    path_pattern {
-      values = ["/var/www/html/index.html"]
-    }
   }
 }

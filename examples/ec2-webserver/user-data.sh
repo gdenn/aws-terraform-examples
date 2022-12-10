@@ -4,6 +4,7 @@
 # CONSTANTS
 #####################################################
 
+log_group=web-server
 cw_agent_config_folder=/opt/aws/amazon-cloudwatch-agent/etc/
 cw_agent_config_path=/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
 cw_agent_ctl=/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl
@@ -17,15 +18,13 @@ ssm_agent_deb_download_url=https://s3.amazonaws.com/ec2-downloads-windows/SSMAge
 http_access_logs=/var/log/httpd/access_log
 http_error_logs=/var/log/httpd/error_log
 
-export USER=$(whoami)
-cd $HOME
 
 #####################################################
 # AWS SESSION MANAGER AGENT
 #####################################################
 sudo mkdir /tmp/ssm
 cd /tmp/ssm
-wget $ssm_agent_deb_download_url
+wget https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_amd64/amazon-ssm-agent.deb
 
 sudo dpkg -i amazon-ssm-agent.deb
 sudo systemctl enable amazon-ssm-agent
