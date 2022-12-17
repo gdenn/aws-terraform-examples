@@ -145,9 +145,10 @@ resource "aws_alb_listener" "http_listener" {
 
 resource "aws_alb_target_group" "service_target_group" {
   name = "serviceTargetGroup"
-  port = local.host_port
+  port = 80
   protocol = "HTTP"
   vpc_id = module.vpc.vpc_id
+  target_type = "ip"
   
   health_check {
     healthy_threshold = 2
