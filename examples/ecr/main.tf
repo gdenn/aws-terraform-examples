@@ -4,11 +4,32 @@
 
 resource "aws_ecr_repository" "ecr" {
   name = "shared-ecr"
+  image_tag_mutability = "MUTABLE" # allow overrides of the LATEST tag
   tags = {
     Name = "shared-ecr"
     Environment = "test"
   }
 }
+
+resource "aws_ecr_lifecycle_policy" "ecr_lifecycle_policy" {
+  repository = aws_ecr_repository.ecr.name
+
+  policy = jsonencode({
+    rules = [{
+      rulePriority = 1
+      description = "keep only the last 10 images"
+      actions = {
+        type = "expire"
+      }
+      selection = {
+        tagStatus = "any"
+        countType = "imageCountMoreThan"
+        countNumber = 10
+      }
+    }]
+  })
+}
+
 
 #####################################################
 # PULLING IMAGES
