@@ -56,14 +56,35 @@ resource "aws_ecs_task_definition" "nodejs_hello_wold_task" {
     cpu = local.task_cpu,
     memory = local.task_memory,
     essential = true,
+    execution_role_arn = aws_iam_role.ecs_task_execution_role.arn
+  
     portMappings: [{
       containerPort = local.container_port,
       protocol = "tcp"
-      hostPort = local.host_port
+      hostPort = local.container_port
     }]
   }])
 }
 
+resource "aws_iam_role" "ecs_task_execution_role" {
+  name = "ecsTaskExecutionRole"
+
+  assume_role_policy = jsonencode({
+    Statement = {
+      Action = "sts:AssumeRole",
+      Principal = {
+        Service = "ecs-tasks.amazonaws.com"
+      },
+      Effect = "Allow",
+      Sid = ""
+    }
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "task_execution_role_policy" {
+  role  = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
 
 #####################################################
 # ECS SERVICE
