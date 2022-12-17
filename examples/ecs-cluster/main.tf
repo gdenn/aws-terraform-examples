@@ -13,6 +13,10 @@ locals {
   availability_zone2 = "eu-central-1b"
 }
 
+#####################################################
+# VPC
+#####################################################
+
 module "vpc" {
   source             = "../../modules/vpc"
   profile            = var.profile
@@ -23,6 +27,10 @@ module "vpc" {
   log_group_name     = "ecs-cluster-vpc-flow-logs"
 }
 
+#####################################################
+# ECS CLUSTER
+#####################################################
+
 resource "aws_ecs_cluster" "ecs_cluster" {
   name = "test-ecs-cluster"
   setting {
@@ -30,6 +38,10 @@ resource "aws_ecs_cluster" "ecs_cluster" {
     value = "enabled"
   }
 }
+
+#####################################################
+# ECS TASK
+#####################################################
 
 resource "aws_ecs_task_definition" "nodejs_hello_wold_task" {
   family = "service"
@@ -51,6 +63,11 @@ resource "aws_ecs_task_definition" "nodejs_hello_wold_task" {
     }]
   }])
 }
+
+
+#####################################################
+# ECS SERVICE
+#####################################################
 
 resource "aws_ecs_service" "hello_world_service" {
   name = local.service_name
@@ -76,12 +93,17 @@ resource "aws_ecs_service" "hello_world_service" {
   }
 }
 
+#####################################################
+# ALB SETUP
+#####################################################
+
 resource "aws_alb" "ecs_alb" {
   name = "ecsalb"
   internal = false
   load_balancer_type = "application"
   security_groups = [aws_security_group.alb_sg.id]
   subnets = module.vpc.web_subnet
+
   enable_deletion_protection = false
 }
 
@@ -117,6 +139,10 @@ resource "aws_alb_target_group" "service_target_group" {
     port = local.host_port
   }
 }
+
+#####################################################
+# SECURITY GROUPS
+#####################################################
 
 resource "aws_security_group" "ecs_task_sg" {
   name = "ECSTaskSG"
