@@ -114,7 +114,7 @@ resource "aws_ecs_service" "hello_world_service" {
   load_balancer {
     target_group_arn = aws_alb_target_group.service_target_group.arn
     container_name = local.container_name
-    container_port = local.host_port
+    container_port = local.container_port
   }
 }
 
