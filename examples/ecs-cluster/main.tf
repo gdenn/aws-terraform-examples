@@ -2,7 +2,7 @@ locals {
   container_name = "hello_world_service"
   container_image = "express-hello-world"
   container_port = 8080
-  host_port = 80
+  host_port = 8080
   task_memory = 2048
   task_cpu = 512
   service_desired_count = 1
@@ -65,7 +65,7 @@ resource "aws_ecs_service" "hello_world_service" {
 
   network_configuration {
     assign_public_ip = false
-    security_groups = []
+    security_groups = [aws_security_group.ecs_task_sg.id]
     subnets = module.vpc.computing_subnet
   }
 
@@ -80,19 +80,25 @@ resource "aws_alb" "ecs_alb" {
   name = "ecsalb"
   internal = false
   load_balancer_type = "application"
-  security_groups = []
+  security_groups = [aws_security_group.alb_sg.id]
   subnets = module.vpc.web_subnet
   enable_deletion_protection = false
 }
 
 resource "aws_alb_listener" "http_listener" {
   load_balancer_arn = aws_alb.ecs_alb.arn
-  port = local.host_port
+  port = 80
   protocol = "tcp"
 
   default_action {
+    type = "redirect"
     target_group_arn = aws_alb_target_group.service_target_group.arn
-    type = "forward"
+  
+    redirect {
+      port = local.host_port
+      protocol = "HTTP"
+      status_code = "HTTP_301"
+    }
   }
 }
 
@@ -109,5 +115,47 @@ resource "aws_alb_target_group" "service_target_group" {
     interval = 10
     path = "/"
     port = local.host_port
+  }
+}
+
+resource "aws_security_group" "ecs_task_sg" {
+  name = "ECSTaskSG"
+  vpc_id = module.vpc.vpc_id
+
+  ingress {
+    protocol = "TCP"
+    from_port = local.host_port
+    to_port = local.host_port
+    security_groups = [aws_security_group.alb_sg.id]
+  }
+
+  egress {
+    protocol = "-1"
+    from_port = 0
+    to_port = 0
+    cidr_blocks = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+}
+
+resource "aws_security_group" "alb_sg" {
+  name = "ALBSg"
+  vpc_id = module.vpc.vpc_id
+
+  ingress {
+    protocol = "TCP"
+    from_port = 80
+    to_port = 80
+    cidr_blocks = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  egress {
+    protocol = "-1"
+    from_port = 0
+    to_port = 0
+    cidr_blocks = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
   }
 }
