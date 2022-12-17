@@ -101,6 +101,10 @@ resource "aws_ecs_service" "hello_world_service" {
   scheduling_strategy = "REPLICA"
   platform_version = "LATEST"
 
+  depends_on = [
+    aws_alb_target_group.service_target_group
+  ]
+
   network_configuration {
     assign_public_ip = false
     security_groups = [aws_security_group.ecs_task_sg.id]
