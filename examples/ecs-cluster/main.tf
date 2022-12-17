@@ -51,11 +51,11 @@ resource "aws_ecs_task_definition" "nodejs_hello_wold_task" {
   memory = local.task_memory
 
   container_definitions = jsonencode([{
-    name: local.container_name,
-    image: local.container_image,
-    cpu: local.task_cpu,
-    memory: local.task_memory,
-    essential: true,
+    name = local.container_name,
+    image = local.container_image,
+    cpu = local.task_cpu,
+    memory = local.task_memory,
+    essential = true,
     portMappings: [{
       containerPort = local.container_port,
       protocol = "tcp"
