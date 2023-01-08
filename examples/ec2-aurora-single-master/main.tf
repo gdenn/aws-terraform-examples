@@ -1,10 +1,10 @@
 locals {
 
-  availability_zones = data.aws_availability_zones.azs.*.name
+  availability_zones = data.aws_availability_zones.azs.*.id
 
   # aurora
   db_port           = 3306
-  db_engine_version = var.aurora_engine_version ? var.aurora_engine_version : data.aws_rds_engine_version.aurora_version.name
+  db_engine_version = var.aurora_engine_version != "" ? var.aurora_engine_version : data.aws_rds_engine_version.aurora_version.version
 
   # ec2 instance
   ec2_instance_type     = "t3.micro"
@@ -13,9 +13,9 @@ locals {
 
   # naming conventions
   app_prefix     = "${var.organization_prefix}-${var.app_id}"
-  stack_prefix   = "${app_prefix}-aurora"
-  log_group_name = "${app_prefix}-logs"
-  vpc_name       = "${app_prefix}-vpc"
+  stack_prefix   = "${local.app_prefix}-aurora"
+  log_group_name = "${local.app_prefix}-logs"
+  vpc_name       = "${local.app_prefix}-vpc"
 
   # following AWS best practices
   # https://docs.aws.amazon.com/whitepapers/latest/tagging-best-practices/defining-and-publishing-a-tagging-schema.html
@@ -52,7 +52,7 @@ module "vpc" {
 
 # for Aurora cluster VPC deployment
 resource "aws_db_subnet_group" "aurora_subnet_group" {
-  name        = "${stack_prefix}-subnet-group"
+  name        = "${local.stack_prefix}-subnet-group"
   description = "subnet group for the aurora cluster"
 
   # put RDBMS into a private, isolated subnet
@@ -63,7 +63,7 @@ resource "aws_db_subnet_group" "aurora_subnet_group" {
 }
 
 resource "aws_rds_cluster" "aurora_cluster" {
-  cluster_identifier   = "${stack_prefix}-cluster"
+  cluster_identifier   = "${local.stack_prefix}-cluster"
   db_subnet_group_name = aws_db_subnet_group.aurora_subnet_group.name
   engine               = var.aurora_engine
   engine_version       = local.db_engine_version
@@ -87,7 +87,7 @@ resource "aws_rds_cluster" "aurora_cluster" {
 
 resource "aws_rds_cluster_instance" "aurora_cluster_instance" {
   count          = var.cluster_instance_count
-  identifier     = "${stack_prefix}-cluster-instance-${count.index}"
+  identifier     = "${local.stack_prefix}-cluster-instance-${count.index}"
   instance_class = var.cluster_instance_type
 
   cluster_identifier = aws_rds_cluster.aurora_cluster.id
@@ -98,7 +98,7 @@ resource "aws_rds_cluster_instance" "aurora_cluster_instance" {
 }
 
 resource "aws_db_parameter_group" "aurora_cluster_parameter_group" {
-  name        = "${stack_prefix}-cluster"
+  name        = "${local.stack_prefix}-cluster"
   family      = "aurora5.6"
   description = "RDS default cluster parameter group"
 
@@ -135,7 +135,7 @@ resource "aws_kms_key" "aurora_encryption_key" {
 #####################################################
 
 resource "aws_ssm_parameter" "aurora_writer_endpoint" {
-  name  = "${stack_prefix}-writer-endpoint"
+  name  = "${local.stack_prefix}-writer-endpoint"
   type  = "String"
   value = aws_rds_cluster.aurora_cluster.endpoint
 
@@ -143,7 +143,7 @@ resource "aws_ssm_parameter" "aurora_writer_endpoint" {
 }
 
 resource "aws_ssm_parameter" "aurora_reader_endpoint" {
-  name  = "${stack_prefix}-reader-endpoint"
+  name  = "${local.stack_prefix}-reader-endpoint"
   type  = "String"
   value = aws_rds_cluster.aurora_cluster.reader_endpoint
 
@@ -151,7 +151,7 @@ resource "aws_ssm_parameter" "aurora_reader_endpoint" {
 }
 
 resource "aws_ssm_parameter" "aurora_master_password" {
-  name  = "${stack_prefix}-master-password"
+  name  = "${local.stack_prefix}-master-password"
   type  = "SecureString"
   value = var.master_password
 
@@ -159,7 +159,7 @@ resource "aws_ssm_parameter" "aurora_master_password" {
 }
 
 resource "aws_ssm_parameter" "aurora_master_username" {
-  name  = "${stack_prefix}-master-username"
+  name  = "${local.stack_prefix}-master-username"
   type  = "String"
   value = var.master_username
 
@@ -172,16 +172,11 @@ resource "aws_ssm_parameter" "aurora_master_username" {
 
 resource "aws_instance" "instance" {
   ami           = data.aws_ami.amzn2.id
-  instance_type = local.ec2_instance_type1
-  user_data     = templatefile("user-data.sh", {})
+  instance_type = local.ec2_instance_type
+  # user_data     = templatefile("user-data.sh", {})
   subnet_id     = element(module.vpc.web_subnet, 0)
 
   iam_instance_profile = aws_iam_instance_profile.instance_profile.name
-
-  depends_on = [
-    aws_iam_role_policy_attachment.smm_policy_attachment,
-  ]
-
   security_groups = [aws_security_group.ec2_egress_to_aurora_sg.id]
 
   root_block_device {
@@ -194,14 +189,14 @@ resource "aws_instance" "instance" {
 }
 
 resource "aws_iam_instance_profile" "instance_profile" {
-  name = "${stack_prefix}-ec2-instance-profile"
+  name = "${local.stack_prefix}-ec2-instance-profile"
   role = aws_iam_role.instance_profile.name
 
   tags = local.tags
 }
 
 resource "aws_iam_role" "instance_profile" {
-  name = "${stack_prefix}-ec2-instance-profile-role"
+  name = "${local.stack_prefix}-ec2-instance-profile-role"
   path = "/"
 
   assume_role_policy = jsonencode({
@@ -224,15 +219,11 @@ resource "aws_iam_role" "instance_profile" {
 resource "aws_iam_role_policy_attachment" "rds_full_access_policy_attachment" {
   role       = aws_iam_role.instance_profile.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonRDSFullAccess"
-
-  tags = local.tags
 }
 
 resource "aws_iam_role_policy_attachment" "ec2_ssh_via_ssm_policy_attachment" {
   role       = aws_iam_role.instance_profile.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-
-  tags = local.tags
 }
 
 data "aws_ami" "amzn2" {
@@ -251,7 +242,7 @@ data "aws_ami" "amzn2" {
 #####################################################
 
 resource "aws_security_group" "ec2_egress_to_aurora_sg" {
-  name = "${stack_prefix}-ec2-egress-to-aurora-sg"
+  name = "${local.stack_prefix}-ec2-egress-to-aurora-sg"
 
   description = "allow egress to tcp/${local.db_port} to aurora db"
   vpc_id      = module.vpc.vpc_id
@@ -265,38 +256,28 @@ resource "aws_security_group_rule" "ec2_egress_to_aurora_sg_rule" {
   from_port        = local.db_port
   to_port          = local.db_port
   protocol         = "tcp"
-  cidr_blocks      = []
-  ipv6_cidr_blocks = []
-  prefix_list_ids  = []
   self             = false
 
   security_group_id = aws_security_group.ec2_egress_to_aurora_sg.id 
   source_security_group_id = aws_security_group.aurora_ingress_from_ec2_sg.id
-
-  tags = local.tags
 }
 
 resource "aws_security_group" "aurora_ingress_from_ec2_sg" {
-  name = "${stack_prefix}-aurora-ingress-from-ec2-sg"
+  name = "${local.stack_prefix}-aurora-ingress-from-ec2-sg"
 
   description = "allow ingress from tcp/${local.db_port} from ec2 instance"
   vpc_id      = module.vpc.vpc_id
-
   tags = local.tags
 }
 
 resource "aws_security_group_rule" "aurora_ingress_from_ec2_sg_rule" {
   description      = "allow egress to aurora db"
+  type = "ingress"
   from_port        = local.db_port
   to_port          = local.db_port
   protocol         = "tcp"
-  cidr_blocks      = []
-  ipv6_cidr_blocks = []
-  prefix_list_ids  = []
   self             = false
   
   security_group_id = aws_security_group.aurora_ingress_from_ec2_sg.id 
   source_security_group_id = aws_security_group.ec2_egress_to_aurora_sg.id
-
-  tags = local.tags
 }

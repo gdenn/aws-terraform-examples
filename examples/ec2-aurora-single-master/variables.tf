@@ -52,11 +52,11 @@ variable "database_name" {
 
 variable "aurora_engine" {
   type        = string
-  description = "engine: either 'aurora_postgres' or 'aurora_mysql'"
-  default     = "aurora_postgres"
+  description = "engine: either 'aurora_postgres' or 'aurora-mysql'"
+  default     = "aurora-postgresql"
   validation {
-    condition     = contains(["aurora_postgres", "aurora_mysql"], var.aurora_engine)
-    error_message = "valid values: 'aurora_postgres', 'aurora_mysql'"
+    condition     = contains(["aurora-postgresql", "aurora-mysql"], var.aurora_engine)
+    error_message = "valid values: 'aurora-postgresql', 'aurora-mysql'"
   }
 }
 
