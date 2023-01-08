@@ -36,7 +36,8 @@ variable "organization_prefix" {
 
 variable "data_classification" {
   type        = string
-  description = "identifies how sensitive your data is"
+  description = "identifies how sensitive your data is, possible values are: 'Public', 'Private', 'Confidential', 'Restricted'"
+  default = "Private"
   validation {
     condition     = contains(["Public", "Private", "Confidential", "Restricted"], var.data_classification)
     error_message = "valad values: 'Public', 'Private', 'Confidential', 'Restricted'"
