@@ -42,7 +42,7 @@ variable "data_classification" {
   type        = string
   description = "identifies how sensitive your data is"
   validation {
-    condition     = contains(["Public", "Private", "Confidential", "Restricted"])
+    condition     = contains(["Public", "Private", "Confidential", "Restricted"], var.data_classification)
     error_message = "valad values: 'Public', 'Private', 'Confidential', 'Restricted'"
   }
 }
@@ -58,7 +58,7 @@ variable "aurora_engine" {
   description = "engine: either 'aurora_postgres' or 'aurora_mysql'"
   default     = "aurora_postgres"
   validation {
-    condition     = contains(["aurora_postgres", "aurora_mysql"])
+    condition     = contains(["aurora_postgres", "aurora_mysql"], var.aurora_engine)
     error_message = "valid values: 'aurora_postgres', 'aurora_mysql'"
   }
 }
