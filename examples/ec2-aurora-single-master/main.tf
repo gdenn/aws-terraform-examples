@@ -256,19 +256,22 @@ resource "aws_security_group" "ec2_egress_to_aurora_sg" {
   description = "allow egress to tcp/${local.db_port} to aurora db"
   vpc_id      = module.vpc.vpc_id
 
-  egress = [
-    {
-      description      = "allow egress to aurora db"
-      from_port        = local.db_port
-      to_port          = local.db_port
-      protocol         = "tcp"
-      security_groups  = [aws_security_group.aurora_ingress_from_ec2_sg.id]
-      cidr_blocks      = []
-      ipv6_cidr_blocks = []
-      prefix_list_ids  = []
-      self             = false
-    }
-  ]
+  tags = local.tags
+}
+
+resource "aws_security_group_rule" "ec2_egress_to_aurora_sg_rule" {
+  description      = "allow egress to aurora db"
+  type = "egress"
+  from_port        = local.db_port
+  to_port          = local.db_port
+  protocol         = "tcp"
+  cidr_blocks      = []
+  ipv6_cidr_blocks = []
+  prefix_list_ids  = []
+  self             = false
+
+  security_group_id = aws_security_group.ec2_egress_to_aurora_sg.id 
+  source_security_group_id = aws_security_group.aurora_ingress_from_ec2_sg.id
 
   tags = local.tags
 }
@@ -279,19 +282,21 @@ resource "aws_security_group" "aurora_ingress_from_ec2_sg" {
   description = "allow ingress from tcp/${local.db_port} from ec2 instance"
   vpc_id      = module.vpc.vpc_id
 
-  ingress = [
-    {
-      description      = "allow egress to aurora db"
-      from_port        = local.db_port
-      to_port          = local.db_port
-      protocol         = "tcp"
-      security_groups  = [aws_security_group.ec2_egress_to_aurora_sg.id]
-      cidr_blocks      = []
-      ipv6_cidr_blocks = []
-      prefix_list_ids  = []
-      self             = false
-    }
-  ]
+  tags = local.tags
+}
+
+resource "aws_security_group_rule" "aurora_ingress_from_ec2_sg_rule" {
+  description      = "allow egress to aurora db"
+  from_port        = local.db_port
+  to_port          = local.db_port
+  protocol         = "tcp"
+  cidr_blocks      = []
+  ipv6_cidr_blocks = []
+  prefix_list_ids  = []
+  self             = false
+  
+  security_group_id = aws_security_group.aurora_ingress_from_ec2_sg.id 
+  source_security_group_id = aws_security_group.ec2_egress_to_aurora_sg.id
 
   tags = local.tags
 }
