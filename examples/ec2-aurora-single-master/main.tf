@@ -1,5 +1,7 @@
 locals {
 
+  availability_zones = data.aws_availability_zones.azs.*.name
+
   # aurora
   db_port           = 3306
   db_engine_version = var.aurora_engine_version ? var.aurora_engine_version : data.aws_rds_engine_version.aurora_version.name
@@ -26,6 +28,10 @@ locals {
   }
 }
 
+data "aws_availability_zones" "azs" {
+  state = "available"
+}
+
 #####################################################
 # VPC
 #####################################################
@@ -36,7 +42,7 @@ module "vpc" {
   environment        = var.environment_id
   region             = var.region
   log_group_name     = local.log_group_name
-  availability_zones = var.availability_zones
+  availability_zones = local.availability_zones
   vpc_name           = local.vpc_name
 }
 

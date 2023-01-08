@@ -8,10 +8,6 @@ variable "region" {
   default = "eu-central-1"
 }
 
-variable "availability_zones" {
-  type = list(string)
-}
-
 variable "environment_id" {
   type        = string
   description = "type of environment"
